@@ -76,16 +76,43 @@ document.addEventListener('DOMContentLoaded', () => {
             alert('Please enter both origin and destination');
             return;
         }
+        async function geocodeIfNeeded(q) {
+            // If input looks like "lat,lon" return as-is
+            const coordMatch = q.trim().match(/^(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)$/);
+            if (coordMatch) {
+                return { lat: parseFloat(coordMatch[1]), lon: parseFloat(coordMatch[2]) };
+            }
+
+            // Use Nominatim for simple geocoding
+            try {
+                const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(q)}`;
+                const resp = await fetch(url, { headers: { 'Accept-Language': 'en' } });
+                const results = await resp.json();
+                if (results && results.length > 0) {
+                    return { lat: parseFloat(results[0].lat), lon: parseFloat(results[0].lon) };
+                }
+                throw new Error('no geocoding result');
+            } catch (err) {
+                throw err;
+            }
+        }
 
         try {
-            const response = await fetch(`/api/routes?origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}`);
+            const o = await geocodeIfNeeded(origin);
+            const d = await geocodeIfNeeded(destination);
+
+            const originParam = `${o.lat},${o.lon}`;
+            const destParam = `${d.lat},${d.lon}`;
+
+            const response = await fetch(`/api/routes?origin=${encodeURIComponent(originParam)}&destination=${encodeURIComponent(destParam)}`);
+            if (!response.ok) throw new Error('route request failed');
             const route = await response.json();
-            
+
             routeLayers.clearLayers();
-            
+
             const geometry = JSON.parse(route.geometry);
             const routeColor = route.risk_score > 0.5 ? '#e74c3c' : (route.risk_score > 0.2 ? '#f39c12' : '#2ecc71');
-            
+
             const polyline = L.geoJSON(geometry, {
                 style: {
                     color: routeColor,
@@ -93,9 +120,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     opacity: 0.7
                 }
             }).addTo(routeLayers);
-            
+
             map.fitBounds(polyline.getBounds());
-            
+
             if (route.hazards && route.hazards.length > 0) {
                 alert(`Warning: This route has a risk score of ${Math.round(route.risk_score * 100)}%. ${route.hazards.length} hazards detected.`);
             } else {
@@ -103,7 +130,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } catch (error) {
             console.error('Error fetching route:', error);
-            alert('Failed to find route');
+            alert('Failed to find route: ' + (error.message || 'unknown'));
         }
     });
 });
