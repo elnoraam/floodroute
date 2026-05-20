@@ -1,0 +1,16 @@
+[Unit]
+Description=FloodRoute Go service
+After=network.target
+
+[Service]
+Type=simple
+User=www
+Group=www
+WorkingDirectory=/opt/floodroute
+EnvironmentFile=/etc/floodroute.env
+ExecStart=/opt/floodroute/floodroute
+Restart=on-failure
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target
