@@ -15,8 +15,8 @@ import (
 	"github.com/floodroute/backend/internal/scheduler"
 	"github.com/floodroute/backend/internal/service"
 	"github.com/jmoiron/sqlx"
-	_ "github.com/lib/pq"
 	"github.com/joho/godotenv"
+	_ "github.com/lib/pq"
 )
 
 func main() {

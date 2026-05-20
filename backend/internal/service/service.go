@@ -88,11 +88,11 @@ type IncidentInput struct {
 
 // RouteInput is the route request accepted by the API.
 type RouteInput struct {
-	OriginLat   float64
-	OriginLon   float64
-	DestLat     float64
-	DestLon     float64
-	Profile     string
+	OriginLat    float64
+	OriginLon    float64
+	DestLat      float64
+	DestLon      float64
+	Profile      string
 	Alternatives int
 }
 
@@ -504,7 +504,7 @@ func (s *Service) scoreCandidate(ctx context.Context, input RouteInput, coords [
 	result := model.RouteResult{
 		IsRecommended:  primary,
 		SafetyScore:    score,
-		CongestionProb:  clamp01(1 - score + congestionPenalty*0.6),
+		CongestionProb: clamp01(1 - score + congestionPenalty*0.6),
 		HazardCount:    len(hazards),
 		DistanceM:      distanceM,
 		DurationS:      durationS,
@@ -606,7 +606,6 @@ func routeHazardsAndPenalties(incidents []model.Incident, zones []model.FloodZon
 
 	return hazards, incidentPenalty, congestionPenalty
 }
-
 
 func (s *Service) fetchOpenRouteService(ctx context.Context, input RouteInput, viaPoint *[2]float64) ([][2]float64, error) {
 	if strings.TrimSpace(s.Config.ORSAPIKey) != "" {
