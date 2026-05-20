@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0a1628" />
+  <meta name="description" content="FloodRoute – Real-time flood-aware navigation for Bandung" />
+  <title>FloodRoute</title>
+  <link rel="manifest" href="manifest.json" />
+
+  <script>
+    window.FLOODROUTE_API_BASE = "http://localhost:8080";
+  </script>
+
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<!-- ─── Header ──────────────────────────────────────────────────────────── -->
+<header class="header" id="header">
+  <div class="header-logo">
+    <span class="logo-icon">⬡</span>
+    <span class="logo-text">FloodRoute</span>
+    <span class="logo-badge">BETA</span>
+  </div>
+
+  <nav class="header-nav">
+    <button class="nav-btn active" data-panel="route" title="Route planner">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M3 12h18M12 3l9 9-9 9"/>
+      </svg>
+      Route
+    </button>
+    <button class="nav-btn" data-panel="report" title="Report incident">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+      </svg>
+      Report
+    </button>
+    <button class="nav-btn" data-panel="layers" title="Map layers">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/>
+      </svg>
+      Layers
+    </button>
+  </nav>
+
+  <div class="header-right">
+    <div class="weather-chip" id="weatherChip">
+      <span class="weather-icon">🌤</span>
+      <span class="weather-temp" id="weatherTemp">--°C</span>
+      <span class="weather-rain" id="weatherRain">-- mm/h</span>
+    </div>
+    <button class="btn-icon" id="btnAuth" title="Account">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/>
+      </svg>
+    </button>
+  </div>
+</header>
+
+<!-- ─── Main Layout ──────────────────────────────────────────────────────── -->
+<main class="main">
+
+  <!-- Sidebar Panels -->
+  <aside class="sidebar" id="sidebar">
+
+    <!-- Route Panel -->
+    <section class="panel active" id="panelRoute">
+      <div class="panel-header">
+        <h2>Find Safe Route</h2>
+        <p class="panel-sub">Flood-aware navigation with real-time hazard scoring</p>
+      </div>
+
+      <div class="input-group">
+        <label class="input-label">Origin</label>
+        <div class="input-with-btn">
+          <input type="text" id="inputOrigin" class="map-input" placeholder="Click on map or type address…" />
+          <button class="btn-locate" id="btnLocate" title="Use my location">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
+            </svg>
+          </button>
+        </div>
+        <div class="coord-badge" id="coordOrigin"></div>
+      </div>
+
+      <div class="route-divider">
+        <div class="divider-line"></div>
+        <button class="btn-swap" id="btnSwap" title="Swap origin and destination">⇅</button>
+        <div class="divider-line"></div>
+      </div>
+
+      <div class="input-group">
+        <label class="input-label">Destination</label>
+        <div class="input-with-btn">
+          <input type="text" id="inputDest" class="map-input" placeholder="Click on map or type address…" />
+        </div>
+        <div class="coord-badge" id="coordDest"></div>
+      </div>
+
+      <div class="route-options">
+        <label class="input-label">Transport</label>
+        <div class="profile-chips">
+          <button class="chip active" data-profile="driving-car">🚗 Car</button>
+          <button class="chip" data-profile="driving-hgv">🚛 HGV</button>
+          <button class="chip" data-profile="cycling-regular">🚲 Bike</button>
+          <button class="chip" data-profile="foot-walking">🚶 Walk</button>
+        </div>
+      </div>
+
+      <button class="btn-primary" id="btnRoute">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/>
+        </svg>
+        Calculate Safe Route
+      </button>
+
+      <!-- Route Results -->
+      <div class="route-results hidden" id="routeResults">
+        <div class="results-header">
+          <h3>Routes Found</h3>
+          <span class="results-count" id="resultsCount"></span>
+        </div>
+        <div class="route-cards" id="routeCards"></div>
+      </div>
+
+      <!-- Active Incidents Summary -->
+      <div class="incidents-summary" id="incidentsSummary">
+        <div class="summary-header">
+          <h3>Active Reports</h3>
+          <span class="live-dot"></span>
+          <span class="live-label">LIVE</span>
+        </div>
+        <div class="incident-list" id="incidentList"></div>
+      </div>
+    </section>
+
+    <!-- Report Panel -->
+    <section class="panel" id="panelReport">
+      <div class="panel-header">
+        <h2>Report Incident</h2>
+        <p class="panel-sub">Help the community by reporting hazards</p>
+      </div>
+
+      <div class="input-group">
+        <label class="input-label">Incident Type</label>
+        <div class="type-grid" id="typeGrid">
+          <button class="type-btn active" data-type="FLOOD">
+            <span class="type-icon">🌊</span>
+            <span>Flood</span>
+          </button>
+          <button class="type-btn" data-type="ACCIDENT">
+            <span class="type-icon">🚨</span>
+            <span>Accident</span>
+          </button>
+          <button class="type-btn" data-type="CONGESTION">
+            <span class="type-icon">🚦</span>
+            <span>Congestion</span>
+          </button>
+          <button class="type-btn" data-type="ROAD_CLOSURE">
+            <span class="type-icon">🚧</span>
+            <span>Road Closed</span>
+          </button>
+          <button class="type-btn" data-type="FALLEN_TREE">
+            <span class="type-icon">🌲</span>
+            <span>Fallen Tree</span>
+          </button>
+          <button class="type-btn" data-type="OTHER">
+            <span class="type-icon">⚠️</span>
+            <span>Other</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="input-group">
+        <label class="input-label">Severity</label>
+        <div class="severity-slider-wrap">
+          <input type="range" min="1" max="5" value="2" id="severitySlider" class="severity-slider" />
+          <div class="severity-labels">
+            <span>Minor</span>
+            <span>Moderate</span>
+            <span>Severe</span>
+          </div>
+          <div class="severity-display" id="severityDisplay">2 – Moderate</div>
+        </div>
+      </div>
+
+      <div class="input-group">
+        <label class="input-label">Location</label>
+        <p class="hint-text">Click on the map to set location, or use current position.</p>
+        <button class="btn-secondary" id="btnReportLocate">
+          📍 Use My Location
+        </button>
+        <div class="coord-badge" id="reportCoords">Not set</div>
+      </div>
+
+      <div class="input-group">
+        <label class="input-label">Description (optional)</label>
+        <textarea id="reportDesc" class="map-input" rows="3" placeholder="Additional details…"></textarea>
+      </div>
+
+      <button class="btn-primary" id="btnSubmitReport">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+        </svg>
+        Submit Report
+      </button>
+
+      <div class="report-feedback hidden" id="reportFeedback"></div>
+    </section>
+
+    <!-- Layers Panel -->
+    <section class="panel" id="panelLayers">
+      <div class="panel-header">
+        <h2>Map Layers</h2>
+        <p class="panel-sub">Toggle hazard and data overlays</p>
+      </div>
+
+      <div class="layer-list">
+        <label class="layer-item">
+          <input type="checkbox" id="layerFloodZones" checked />
+          <div class="layer-icon flood">🌊</div>
+          <div class="layer-info">
+            <span class="layer-name">Flood Zones</span>
+            <span class="layer-desc">Historical & predicted flood areas</span>
+          </div>
+          <div class="layer-toggle"></div>
+        </label>
+
+        <label class="layer-item">
+          <input type="checkbox" id="layerIncidents" checked />
+          <div class="layer-icon incident">⚠️</div>
+          <div class="layer-info">
+            <span class="layer-name">Incidents</span>
+            <span class="layer-desc">Community-reported hazards</span>
+          </div>
+          <div class="layer-toggle"></div>
+        </label>
+
+        <label class="layer-item">
+          <input type="checkbox" id="layerRoutes" checked />
+          <div class="layer-icon route">🛣️</div>
+          <div class="layer-info">
+            <span class="layer-name">Routes</span>
+            <span class="layer-desc">Calculated navigation paths</span>
+          </div>
+          <div class="layer-toggle"></div>
+        </label>
+
+        <label class="layer-item">
+          <input type="checkbox" id="layerWeather" />
+          <div class="layer-icon weather">🌧️</div>
+          <div class="layer-info">
+            <span class="layer-name">Rainfall</span>
+            <span class="layer-desc">Live rainfall intensity overlay</span>
+          </div>
+          <div class="layer-toggle"></div>
+        </label>
+      </div>
+
+      <div class="legend">
+        <h4>Risk Legend</h4>
+        <div class="legend-items">
+          <div class="legend-item"><div class="legend-swatch" style="background:#22c55e"></div><span>Safe (score ≥ 0.8)</span></div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#f59e0b"></div><span>Caution (0.5–0.8)</span></div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#ef4444"></div><span>Danger (< 0.5)</span></div>
+          <div class="legend-item"><div class="legend-swatch" style="background:#3b82f6;opacity:.5"></div><span>Flood Zone</span></div>
+        </div>
+      </div>
+    </section>
+
+  </aside>
+
+  <!-- Map -->
+  <div class="map-wrap">
+    <div id="map"></div>
+
+    <!-- Map controls overlay -->
+    <div class="map-controls">
+      <button class="map-ctrl-btn" id="btnZoomIn">+</button>
+      <button class="map-ctrl-btn" id="btnZoomOut">−</button>
+      <button class="map-ctrl-btn" id="btnFitBounds" title="Fit map to data">⊡</button>
+      <button class="map-ctrl-btn" id="btnRefresh" title="Refresh data">↻</button>
+    </div>
+
+    <!-- Click mode indicator -->
+    <div class="click-mode" id="clickMode" style="display:none">
+      <span id="clickModeText">Click map to set origin</span>
+      <button id="btnCancelClick">✕</button>
+    </div>
+
+    <!-- Loading overlay -->
+    <div class="map-loading hidden" id="mapLoading">
+      <div class="loading-spinner"></div>
+      <span>Calculating safe route…</span>
+    </div>
+  </div>
+
+</main>
+
+<!-- ─── Auth Modal ───────────────────────────────────────────────────────── -->
+<div class="modal-overlay hidden" id="authModal">
+  <div class="modal">
+    <button class="modal-close" id="btnCloseAuth">✕</button>
+    <div class="modal-tabs">
+      <button class="modal-tab active" data-tab="login">Login</button>
+      <button class="modal-tab" data-tab="register">Register</button>
+    </div>
+
+    <form class="modal-form" id="loginForm">
+      <div class="input-group">
+        <label class="input-label">Username</label>
+        <input type="text" id="loginUsername" class="map-input" placeholder="your_username" />
+      </div>
+      <div class="input-group">
+        <label class="input-label">Password</label>
+        <input type="password" id="loginPassword" class="map-input" placeholder="••••••••" />
+      </div>
+      <button type="submit" class="btn-primary">Login</button>
+      <div class="auth-error hidden" id="loginError"></div>
+    </form>
+
+    <form class="modal-form hidden" id="registerForm">
+      <div class="input-group">
+        <label class="input-label">Username</label>
+        <input type="text" id="regUsername" class="map-input" placeholder="choose_a_username" />
+      </div>
+      <div class="input-group">
+        <label class="input-label">Email</label>
+        <input type="email" id="regEmail" class="map-input" placeholder="you@example.com" />
+      </div>
+      <div class="input-group">
+        <label class="input-label">Password</label>
+        <input type="password" id="regPassword" class="map-input" placeholder="min. 8 characters" />
+      </div>
+      <button type="submit" class="btn-primary">Create Account</button>
+      <div class="auth-error hidden" id="registerError"></div>
+    </form>
+  </div>
+</div>
+
+<!-- Toast notifications -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script src="js/api.js"></script>
+<script src="js/map.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
