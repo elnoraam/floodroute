@@ -60,9 +60,18 @@ const API = (() => {
       return request('GET', url);
     },
 
-    async submitIncident(type, severity, latitude, longitude, description = '') {
+    async submitIncident(type, severity, latitude, longitude, description = '', imageUrl = null) {
       return request('POST', '/api/incidents', {
-        type, severity, latitude, longitude, description: description || null
+        type, severity, latitude, longitude, description: description || null, imageUrl
+      });
+    },
+
+    async uploadMedia(file) {
+      const base64Data = await fileToBase64(file);
+      return request('POST', '/api/media', {
+        filename: file.name,
+        contentType: file.type,
+        base64Data
       });
     },
 
@@ -80,6 +89,15 @@ const API = (() => {
       return request('GET', '/api/weather');
     }
   };
+
+  function fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(new Error('Could not read selected file'));
+      reader.readAsDataURL(file);
+    });
+  }
 })();
 
 // Demo/offline fallback data

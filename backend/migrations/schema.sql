@@ -37,6 +37,22 @@ CREATE INDEX idx_users_username ON users(username);
 CREATE INDEX IF NOT EXISTS idx_users_pending ON users(is_active, created_at);
 
 -- ============================================================
+-- MEDIA ASSETS (binary files stored in the VPS-hosted database)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS media_assets (
+    id              BIGSERIAL PRIMARY KEY,
+    user_id         BIGINT REFERENCES users(id) ON DELETE SET NULL,
+    filename        VARCHAR(256) NOT NULL,
+    content_type    VARCHAR(128) NOT NULL,
+    size_bytes      BIGINT NOT NULL CHECK (size_bytes > 0),
+    data            BYTEA NOT NULL,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_media_assets_user ON media_assets(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_media_assets_content_type ON media_assets(content_type);
+
+-- ============================================================
 -- INCIDENTS (community reports)
 -- ============================================================
 CREATE TABLE IF NOT EXISTS incidents (

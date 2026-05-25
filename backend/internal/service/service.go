@@ -3,6 +3,7 @@ package service
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -40,6 +41,7 @@ type Service struct {
 	Config     *config.Config
 	db         *sqlx.DB
 	Users      *repository.UserRepository
+	Media      *repository.MediaRepository
 	Incidents  *repository.IncidentRepository
 	FloodZones *repository.FloodZoneRepository
 	Weather    *repository.WeatherRepository
@@ -108,12 +110,28 @@ type RouteInput struct {
 	Alternatives int
 }
 
+type MediaUploadInput struct {
+	Filename    string
+	ContentType string
+	Base64Data  string
+	UserID      *int64
+}
+
+type MediaUploadResponse struct {
+	ID          int64  `json:"id"`
+	Filename    string `json:"filename"`
+	ContentType string `json:"contentType"`
+	SizeBytes   int64  `json:"sizeBytes"`
+	URL         string `json:"url"`
+}
+
 // New creates a service with repository dependencies wired to the database.
 func New(cfg *config.Config, db *sqlx.DB) *Service {
 	return &Service{
 		Config:     cfg,
 		db:         db,
 		Users:      repository.NewUserRepository(db),
+		Media:      repository.NewMediaRepository(db),
 		Incidents:  repository.NewIncidentRepository(db),
 		FloodZones: repository.NewFloodZoneRepository(db),
 		Weather:    repository.NewWeatherRepository(db),
@@ -278,6 +296,60 @@ func (s *Service) ApproveUser(ctx context.Context, id int64, role model.Role) (*
 		return nil, err
 	}
 	return user, nil
+}
+
+func (s *Service) UploadMedia(ctx context.Context, input MediaUploadInput) (*MediaUploadResponse, error) {
+	filename := strings.TrimSpace(input.Filename)
+	contentType := strings.TrimSpace(input.ContentType)
+	dataText := strings.TrimSpace(input.Base64Data)
+	if filename == "" || contentType == "" || dataText == "" {
+		return nil, fmt.Errorf("%w: filename, contentType, and base64Data are required", ErrValidation)
+	}
+	if !strings.HasPrefix(contentType, "image/") && !strings.HasPrefix(contentType, "video/") {
+		return nil, fmt.Errorf("%w: only image and video media can be uploaded", ErrValidation)
+	}
+	if comma := strings.Index(dataText, ","); strings.HasPrefix(dataText, "data:") && comma >= 0 {
+		dataText = dataText[comma+1:]
+	}
+	data, err := base64.StdEncoding.DecodeString(dataText)
+	if err != nil {
+		return nil, fmt.Errorf("%w: invalid base64Data", ErrValidation)
+	}
+	if len(data) == 0 {
+		return nil, fmt.Errorf("%w: media file is empty", ErrValidation)
+	}
+	if len(data) > 5*1024*1024 {
+		return nil, fmt.Errorf("%w: media file must be 5MB or smaller", ErrValidation)
+	}
+
+	media := &model.MediaAsset{
+		UserID:      input.UserID,
+		Filename:    filename,
+		ContentType: contentType,
+		SizeBytes:   int64(len(data)),
+		Data:        data,
+	}
+	if err := s.Media.Create(ctx, media); err != nil {
+		return nil, err
+	}
+	return &MediaUploadResponse{
+		ID:          media.ID,
+		Filename:    media.Filename,
+		ContentType: media.ContentType,
+		SizeBytes:   media.SizeBytes,
+		URL:         fmt.Sprintf("/api/media/%d", media.ID),
+	}, nil
+}
+
+func (s *Service) GetMedia(ctx context.Context, id int64) (*model.MediaAsset, error) {
+	if id <= 0 {
+		return nil, fmt.Errorf("%w: invalid media id", ErrValidation)
+	}
+	media, err := s.Media.FindByID(ctx, id)
+	if err != nil {
+		return nil, ErrNotFound
+	}
+	return media, nil
 }
 
 // ListIncidents returns active incidents as GeoJSON.

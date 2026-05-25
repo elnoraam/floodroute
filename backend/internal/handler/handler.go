@@ -50,12 +50,14 @@ func NewRouter(svc *service.Service, jwtSecret string) http.Handler {
 			r.Get("/flood-zones", h.listFloodZones)
 			r.Get("/weather", h.listWeather)
 			r.Get("/incidents", h.listIncidents)
+			r.Get("/media/{id}", h.getMedia)
 			r.Post("/routes", h.calculateRoutes)
 			r.Post("/incidents/{id}/upvote", h.upvoteIncident)
 
 			r.Group(func(r chi.Router) {
 				r.Use(middleware.RequireRole(string(model.RoleProducer), string(model.RoleSuperadmin)))
 				r.Post("/incidents", h.createIncident)
+				r.Post("/media", h.uploadMedia)
 			})
 
 			r.Group(func(r chi.Router) {
@@ -239,6 +241,50 @@ func (h *Handler) upvoteIncident(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]int{"upvotes": count})
+}
+
+func (h *Handler) uploadMedia(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Filename    string `json:"filename"`
+		ContentType string `json:"contentType"`
+		Base64Data  string `json:"base64Data"`
+	}
+	if err := decodeJSON(r, &req); err != nil {
+		writeError(w, http.StatusBadRequest, err)
+		return
+	}
+	var userID *int64
+	if claims := middleware.ClaimsFromCtx(r); claims != nil {
+		userID = &claims.UserID
+	}
+	media, err := h.svc.UploadMedia(r.Context(), service.MediaUploadInput{
+		Filename:    req.Filename,
+		ContentType: req.ContentType,
+		Base64Data:  req.Base64Data,
+		UserID:      userID,
+	})
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusCreated, media)
+}
+
+func (h *Handler) getMedia(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil || id <= 0 {
+		writeError(w, http.StatusBadRequest, errors.New("invalid media id"))
+		return
+	}
+	media, err := h.svc.GetMedia(r.Context(), id)
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	w.Header().Set("Content-Type", media.ContentType)
+	w.Header().Set("Content-Disposition", `inline; filename="`+strings.ReplaceAll(media.Filename, `"`, "")+`"`)
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(media.Data)
 }
 
 func (h *Handler) listPendingUsers(w http.ResponseWriter, r *http.Request) {

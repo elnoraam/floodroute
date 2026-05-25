@@ -433,6 +433,7 @@
     }
 
     const desc = $('reportDesc').value.trim();
+    const mediaFile = $('reportMedia').files?.[0] || null;
 
     try {
       if (state.useDemoData) {
@@ -441,12 +442,18 @@
         toast('Report submitted', 'success');
         await loadIncidents();
       } else {
+        let imageUrl = null;
+        if (mediaFile) {
+          const media = await API.uploadMedia(mediaFile);
+          imageUrl = media.url;
+        }
         await API.submitIncident(
           state.reportType,
           state.reportSeverity,
           state.reportCoords.lat,
           state.reportCoords.lon,
-          desc
+          desc,
+          imageUrl
         );
         showReportFeedback('✅ Report submitted successfully!', 'success');
         toast('Report submitted', 'success');

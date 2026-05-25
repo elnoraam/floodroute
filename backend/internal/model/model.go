@@ -26,6 +26,16 @@ type User struct {
 	UpdatedAt    time.Time `db:"updated_at"    json:"updatedAt"`
 }
 
+type MediaAsset struct {
+	ID          int64     `db:"id"           json:"id"`
+	UserID      *int64    `db:"user_id"      json:"userId,omitempty"`
+	Filename    string    `db:"filename"     json:"filename"`
+	ContentType string    `db:"content_type" json:"contentType"`
+	SizeBytes   int64     `db:"size_bytes"   json:"sizeBytes"`
+	Data        []byte    `db:"data"         json:"-"`
+	CreatedAt   time.Time `db:"created_at"   json:"createdAt"`
+}
+
 // ─── Incident ─────────────────────────────────────────────────────────────────
 
 type IncidentType string
@@ -107,23 +117,23 @@ type WeatherCache struct {
 // ─── Route ────────────────────────────────────────────────────────────────────
 
 type Route struct {
-	ID             int64      `db:"id"              json:"id"`
-	UserID         *int64     `db:"user_id"         json:"userId,omitempty"`
-	OriginLat      float64    `db:"origin_lat"      json:"originLat"`
-	OriginLon      float64    `db:"origin_lon"      json:"originLon"`
-	DestLat        float64    `db:"dest_lat"        json:"destLat"`
-	DestLon        float64    `db:"dest_lon"        json:"destLon"`
-	OriginName     *string    `db:"origin_name"     json:"originName,omitempty"`
-	DestName       *string    `db:"dest_name"       json:"destName,omitempty"`
-	DistanceM      *float64   `db:"distance_m"      json:"distanceM,omitempty"`
-	DurationS      *float64   `db:"duration_s"      json:"durationS,omitempty"`
-	SafetyScore    *float64   `db:"safety_score"    json:"safetyScore,omitempty"`
-	CongestionProb *float64   `db:"congestion_prob" json:"congestionProb,omitempty"`
-	HazardCount    int        `db:"hazard_count"    json:"hazardCount"`
-	IsRecommended  bool       `db:"is_recommended"  json:"isRecommended"`
-	Profile        string     `db:"profile"         json:"profile"`
-	CreatedAt      time.Time  `db:"created_at"      json:"createdAt"`
-	ExpiresAt      time.Time  `db:"expires_at"      json:"expiresAt"`
+	ID             int64     `db:"id"              json:"id"`
+	UserID         *int64    `db:"user_id"         json:"userId,omitempty"`
+	OriginLat      float64   `db:"origin_lat"      json:"originLat"`
+	OriginLon      float64   `db:"origin_lon"      json:"originLon"`
+	DestLat        float64   `db:"dest_lat"        json:"destLat"`
+	DestLon        float64   `db:"dest_lon"        json:"destLon"`
+	OriginName     *string   `db:"origin_name"     json:"originName,omitempty"`
+	DestName       *string   `db:"dest_name"       json:"destName,omitempty"`
+	DistanceM      *float64  `db:"distance_m"      json:"distanceM,omitempty"`
+	DurationS      *float64  `db:"duration_s"      json:"durationS,omitempty"`
+	SafetyScore    *float64  `db:"safety_score"    json:"safetyScore,omitempty"`
+	CongestionProb *float64  `db:"congestion_prob" json:"congestionProb,omitempty"`
+	HazardCount    int       `db:"hazard_count"    json:"hazardCount"`
+	IsRecommended  bool      `db:"is_recommended"  json:"isRecommended"`
+	Profile        string    `db:"profile"         json:"profile"`
+	CreatedAt      time.Time `db:"created_at"      json:"createdAt"`
+	ExpiresAt      time.Time `db:"expires_at"      json:"expiresAt"`
 }
 
 // ─── DTO types used across layers ─────────────────────────────────────────────
@@ -172,16 +182,16 @@ type HazardInfo struct {
 
 // RouteResult is the fully scored route returned to the client.
 type RouteResult struct {
-	ID             int64              `json:"id"`
-	IsRecommended  bool               `json:"isRecommended"`
-	SafetyScore    float64            `json:"safetyScore"`
-	CongestionProb float64            `json:"congestionProb"`
-	HazardCount    int                `json:"hazardCount"`
-	DistanceM      float64            `json:"distanceM"`
-	DurationS      float64            `json:"durationS"`
-	ETAMinutes     float64            `json:"etaMinutes"`
-	Geometry       GeoJSONLineString  `json:"geometry"`
-	Hazards        []HazardInfo       `json:"hazards"`
+	ID             int64             `json:"id"`
+	IsRecommended  bool              `json:"isRecommended"`
+	SafetyScore    float64           `json:"safetyScore"`
+	CongestionProb float64           `json:"congestionProb"`
+	HazardCount    int               `json:"hazardCount"`
+	DistanceM      float64           `json:"distanceM"`
+	DurationS      float64           `json:"durationS"`
+	ETAMinutes     float64           `json:"etaMinutes"`
+	Geometry       GeoJSONLineString `json:"geometry"`
+	Hazards        []HazardInfo      `json:"hazards"`
 }
 
 type RouteListResult struct {

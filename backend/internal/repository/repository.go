@@ -130,6 +130,32 @@ func (r *UserRepository) ExistsByEmail(ctx context.Context, email string) (bool,
 	return exists, err
 }
 
+type MediaRepository struct{ db *sqlx.DB }
+
+func NewMediaRepository(db *sqlx.DB) *MediaRepository { return &MediaRepository{db: db} }
+
+func (r *MediaRepository) Create(ctx context.Context, media *model.MediaAsset) error {
+	const q = `
+		INSERT INTO media_assets (user_id, filename, content_type, size_bytes, data)
+		VALUES ($1, $2, $3, $4, $5)
+		RETURNING id, created_at`
+	return r.db.QueryRowContext(ctx, q,
+		media.UserID, media.Filename, media.ContentType, media.SizeBytes, media.Data,
+	).Scan(&media.ID, &media.CreatedAt)
+}
+
+func (r *MediaRepository) FindByID(ctx context.Context, id int64) (*model.MediaAsset, error) {
+	var media model.MediaAsset
+	err := r.db.GetContext(ctx, &media, `
+		SELECT id, user_id, filename, content_type, size_bytes, data, created_at
+		FROM media_assets
+		WHERE id=$1`, id)
+	if err != nil {
+		return nil, err
+	}
+	return &media, nil
+}
+
 // ─── Incident Repository ──────────────────────────────────────────────────────
 
 type IncidentRepository struct{ db *sqlx.DB }
