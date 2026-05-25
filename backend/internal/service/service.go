@@ -59,12 +59,24 @@ type AuthResponse struct {
 	ExpiresAt   time.Time  `json:"expiresAt"`
 }
 
+// RegistrationResponse is returned when a user signs up and waits for approval.
+type RegistrationResponse struct {
+	ID          int64      `json:"id"`
+	Username    string     `json:"username"`
+	Email       string     `json:"email"`
+	DisplayName *string    `json:"displayName,omitempty"`
+	Role        model.Role `json:"role"`
+	IsActive    bool       `json:"isActive"`
+	Message     string     `json:"message"`
+}
+
 // RegisterInput is the payload accepted by the registration flow.
 type RegisterInput struct {
 	Username    string
 	Email       string
 	Password    string
 	DisplayName *string
+	Role        model.Role
 }
 
 // LoginInput is the payload accepted by the login flow.
@@ -112,7 +124,7 @@ func New(cfg *config.Config, db *sqlx.DB) *Service {
 }
 
 // RegisterUser creates a new account and returns the signed token payload.
-func (s *Service) RegisterUser(ctx context.Context, input RegisterInput) (*AuthResponse, error) {
+func (s *Service) RegisterUser(ctx context.Context, input RegisterInput) (*RegistrationResponse, error) {
 	username := strings.TrimSpace(input.Username)
 	email := strings.TrimSpace(strings.ToLower(input.Email))
 	password := input.Password
@@ -141,19 +153,32 @@ func (s *Service) RegisterUser(ctx context.Context, input RegisterInput) (*AuthR
 		return nil, err
 	}
 
+	role := model.Role(auth.NormalizeRole(string(input.Role)))
+	if role == model.RoleSuperadmin {
+		return nil, fmt.Errorf("%w: superadmin accounts must be created by the system administrator", ErrValidation)
+	}
+
 	user := &model.User{
 		Username:     username,
 		Email:        email,
 		PasswordHash: hash,
 		DisplayName:  input.DisplayName,
-		Role:         model.RoleUser,
-		IsActive:     true,
+		Role:         role,
+		IsActive:     false,
 	}
 	if err := s.Users.Create(ctx, user); err != nil {
 		return nil, err
 	}
 
-	return s.issueAuthResponse(user)
+	return &RegistrationResponse{
+		ID:          user.ID,
+		Username:    user.Username,
+		Email:       user.Email,
+		DisplayName: user.DisplayName,
+		Role:        user.Role,
+		IsActive:    user.IsActive,
+		Message:     "registration submitted and waiting for superadmin approval",
+	}, nil
 }
 
 // LoginUser validates the supplied credentials and returns a signed token payload.
@@ -167,14 +192,92 @@ func (s *Service) LoginUser(ctx context.Context, input LoginInput) (*AuthRespons
 	if err != nil {
 		user, err = s.Users.FindByEmail(ctx, strings.ToLower(usernameOrEmail))
 		if err != nil {
+			pending, pendingErr := s.findUserAnyStatus(ctx, usernameOrEmail)
+			if pendingErr == nil && !pending.IsActive {
+				return nil, fmt.Errorf("%w: account is waiting for superadmin approval", ErrUnauthorized)
+			}
 			return nil, ErrUnauthorized
 		}
+	}
+	if !user.IsActive {
+		return nil, fmt.Errorf("%w: account is waiting for superadmin approval", ErrUnauthorized)
 	}
 	if err := auth.ComparePassword(user.PasswordHash, input.Password); err != nil {
 		return nil, ErrUnauthorized
 	}
 
 	return s.issueAuthResponse(user)
+}
+
+// EnsureSuperadmin bootstraps the first account that can approve registrations.
+func (s *Service) EnsureSuperadmin(ctx context.Context) error {
+	username := strings.TrimSpace(s.Config.SuperadminUsername)
+	email := strings.TrimSpace(strings.ToLower(s.Config.SuperadminEmail))
+	password := s.Config.SuperadminPassword
+	if username == "" || email == "" || strings.TrimSpace(password) == "" {
+		return fmt.Errorf("%w: superadmin bootstrap credentials are required", ErrValidation)
+	}
+
+	hasSuperadmin, err := s.Users.ExistsActiveRole(ctx, model.RoleSuperadmin)
+	if err != nil {
+		return err
+	}
+	if hasSuperadmin {
+		return nil
+	}
+
+	exists, err := s.Users.ExistsByUsername(ctx, username)
+	if err != nil {
+		return err
+	}
+	if exists {
+		_, err := s.Users.ActivateByUsername(ctx, username, model.RoleSuperadmin)
+		return err
+	}
+
+	emailExists, err := s.Users.ExistsByEmail(ctx, email)
+	if err != nil {
+		return err
+	}
+	if emailExists {
+		return fmt.Errorf("%w: superadmin email already belongs to another user", ErrValidation)
+	}
+
+	hash, err := auth.HashPassword(password)
+	if err != nil {
+		return err
+	}
+	displayName := "FloodRoute Superadmin"
+	user := &model.User{
+		Username:     username,
+		Email:        email,
+		PasswordHash: hash,
+		DisplayName:  &displayName,
+		Role:         model.RoleSuperadmin,
+		IsActive:     true,
+	}
+	return s.Users.Create(ctx, user)
+}
+
+// ListPendingUsers returns registrations waiting for superadmin approval.
+func (s *Service) ListPendingUsers(ctx context.Context) ([]model.User, error) {
+	return s.Users.FindPending(ctx)
+}
+
+// ApproveUser activates a pending user and assigns the chosen platform role.
+func (s *Service) ApproveUser(ctx context.Context, id int64, role model.Role) (*model.User, error) {
+	if id <= 0 {
+		return nil, fmt.Errorf("%w: invalid user id", ErrValidation)
+	}
+	normalized := model.Role(auth.NormalizeRole(string(role)))
+	if normalized == model.RoleSuperadmin {
+		return nil, fmt.Errorf("%w: superadmin role cannot be granted from the approval queue", ErrValidation)
+	}
+	user, err := s.Users.Approve(ctx, id, normalized)
+	if err != nil {
+		return nil, err
+	}
+	return user, nil
 }
 
 // ListIncidents returns active incidents as GeoJSON.
@@ -435,6 +538,14 @@ func (s *Service) issueAuthResponse(user *model.User) (*AuthResponse, error) {
 		Role:        user.Role,
 		ExpiresAt:   s.now().Add(s.Config.JWTExpirationDur),
 	}, nil
+}
+
+func (s *Service) findUserAnyStatus(ctx context.Context, usernameOrEmail string) (*model.User, error) {
+	user, err := s.Users.FindByUsernameAnyStatus(ctx, usernameOrEmail)
+	if err == nil {
+		return user, nil
+	}
+	return s.Users.FindByEmailAnyStatus(ctx, strings.ToLower(usernameOrEmail))
 }
 
 func (s *Service) buildCandidateGeometry(ctx context.Context, input RouteInput, variant int) ([][2]float64, error) {

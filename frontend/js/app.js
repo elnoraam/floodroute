@@ -40,6 +40,9 @@
   const $severityDisplay = $('severityDisplay');
   const $weatherTemp   = $('weatherTemp');
   const $weatherRain   = $('weatherRain');
+  const $navAdmin      = $('navAdmin');
+  const $accountChip   = $('accountChip');
+  const $approvalList  = $('approvalList');
 
   // ─── Init ─────────────────────────────────────────────────────────────────
 
@@ -122,6 +125,8 @@
     });
     $('loginForm').addEventListener('submit', handleLogin);
     $('registerForm').addEventListener('submit', handleRegister);
+    $('btnLoadPending').addEventListener('click', loadPendingUsers);
+    $accountChip.addEventListener('click', logout);
 
     // Close modal on overlay click
     $('authModal').addEventListener('click', e => {
@@ -129,6 +134,7 @@
     });
 
     // Load initial data
+    restoreSessionLabel();
     loadAllData();
 
     // Refresh weather every 5 min
@@ -146,6 +152,8 @@
       let data;
       if (state.useDemoData) {
         data = DEMO_DATA.floodZones;
+      } else if (!API.getToken()) {
+        data = emptyFeatureCollection();
       } else {
         data = await API.getFloodZones();
       }
@@ -160,6 +168,8 @@
       let data;
       if (state.useDemoData) {
         data = DEMO_DATA.incidents;
+      } else if (!API.getToken()) {
+        data = emptyFeatureCollection();
       } else {
         const center = MapManager.getMap().getCenter();
         data = await API.getIncidents(center.lat, center.lng, 10000);
@@ -177,6 +187,8 @@
       let data;
       if (state.useDemoData) {
         data = DEMO_DATA.weather;
+      } else if (!API.getToken()) {
+        data = [];
       } else {
         data = await API.getWeather();
       }
@@ -203,6 +215,11 @@
   // ─── Route Calculation ────────────────────────────────────────────────────
 
   async function calculateRoute() {
+    if (!state.useDemoData && !API.getToken()) {
+      toast('Login is required to calculate routes', 'error');
+      $('authModal').classList.remove('hidden');
+      return;
+    }
     if (!state.origin) { toast('Set an origin point', 'error'); enterClickMode('origin'); return; }
     if (!state.dest)   { toast('Set a destination point', 'error'); enterClickMode('dest'); return; }
 
@@ -404,6 +421,11 @@
   // ─── Report Submission ────────────────────────────────────────────────────
 
   async function submitReport() {
+    if (!state.useDemoData && !API.getToken()) {
+      showReportFeedback('Login as a producer to submit reports', 'error');
+      $('authModal').classList.remove('hidden');
+      return;
+    }
     if (!state.reportCoords) {
       toast('Set a location for the report', 'error');
       enterClickMode('report');
@@ -473,8 +495,12 @@
     try {
       const data = await API.login(username, password);
       state.user = data;
+      localStorage.setItem('fr_user', JSON.stringify(data));
+      updateAuthState();
       $('authModal').classList.add('hidden');
       toast(`👋 Welcome back, ${data.displayName || data.username}!`, 'success');
+      await loadAllData();
+      if (data.role === 'SUPERADMIN') await loadPendingUsers();
     } catch (err) {
       errEl.textContent = err.message;
       errEl.classList.remove('hidden');
@@ -486,21 +512,104 @@
     const username = $('regUsername').value.trim();
     const email    = $('regEmail').value.trim();
     const password = $('regPassword').value;
+    const role     = $('regRole').value;
     const errEl    = $('registerError');
     errEl.classList.add('hidden');
 
     try {
-      const data = await API.register(username, email, password);
-      state.user = data;
+      const data = await API.register(username, email, password, role);
       $('authModal').classList.add('hidden');
-      toast(`🎉 Account created! Welcome, ${data.username}!`, 'success');
+      toast(data.message || 'Registration submitted for approval', 'success');
+      e.target.reset();
     } catch (err) {
       errEl.textContent = err.message;
       errEl.classList.remove('hidden');
     }
   }
+  // Toast ────────────────────────────────────────────────────────────────
 
-  // ─── Toast ────────────────────────────────────────────────────────────────
+  function restoreSessionLabel() {
+    try {
+      const stored = localStorage.getItem('fr_user');
+      if (stored && API.getToken()) state.user = JSON.parse(stored);
+    } catch (_) {
+      state.user = null;
+    }
+    updateAuthState();
+  }
+
+  function updateAuthState() {
+    const loggedIn = !!state.user;
+    $('btnAuth').classList.toggle('hidden', loggedIn);
+    $accountChip.classList.toggle('hidden', !loggedIn);
+    $navAdmin.classList.toggle('hidden', state.user?.role !== 'SUPERADMIN');
+    if (loggedIn) {
+      $accountChip.textContent = `${state.user.username} - ${formatRole(state.user.role)}`;
+    }
+  }
+
+  function logout() {
+    API.clearToken();
+    localStorage.removeItem('fr_user');
+    state.user = null;
+    updateAuthState();
+    switchPanel('route');
+    toast('Signed out', 'info');
+  }
+
+  async function loadPendingUsers() {
+    if (state.user?.role !== 'SUPERADMIN') return;
+    $approvalList.innerHTML = '<p class="hint-text">Loading pending users...</p>';
+    try {
+      const users = await API.getPendingUsers();
+      renderPendingUsers(users);
+    } catch (err) {
+      $approvalList.innerHTML = `<div class="auth-error">${err.message}</div>`;
+    }
+  }
+
+  function renderPendingUsers(users) {
+    $approvalList.innerHTML = '';
+    if (!users.length) {
+      $approvalList.innerHTML = '<p class="hint-text">No pending registrations.</p>';
+      return;
+    }
+    users.forEach(user => {
+      const row = document.createElement('div');
+      row.className = 'approval-item';
+      row.innerHTML = `
+        <div class="approval-info">
+          <strong>${escapeHtml(user.displayName || user.username)}</strong>
+          <span>${escapeHtml(user.email)}</span>
+          <small>Requested role: ${formatRole(user.role)}</small>
+        </div>
+        <div class="approval-actions">
+          <select class="map-input approval-role">
+            <option value="CONSUMER" ${user.role === 'CONSUMER' ? 'selected' : ''}>Consumer</option>
+            <option value="PRODUCER" ${user.role === 'PRODUCER' ? 'selected' : ''}>Producer</option>
+          </select>
+          <button class="btn-secondary">Approve</button>
+        </div>
+      `;
+      const select = row.querySelector('select');
+      row.querySelector('button').addEventListener('click', async () => {
+        await API.approveUser(user.id, select.value);
+        toast(`${user.username} approved`, 'success');
+        await loadPendingUsers();
+      });
+      $approvalList.appendChild(row);
+    });
+  }
+
+  function formatRole(role) {
+    return String(role || '').toLowerCase().replace(/^\w/, c => c.toUpperCase());
+  }
+
+  function escapeHtml(value) {
+    return String(value || '').replace(/[&<>"']/g, ch => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[ch]));
+  }
 
   function toast(message, type = 'info') {
     const container = $('toastContainer');
@@ -523,6 +632,10 @@
   }
 
   function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+  function emptyFeatureCollection() {
+    return { type: 'FeatureCollection', features: [] };
+  }
 
   // ─── Bootstrap ────────────────────────────────────────────────────────────
 

@@ -24,6 +24,11 @@ type Config struct {
 	JWTSecret        string
 	JWTExpirationDur time.Duration
 
+	// Bootstrap account
+	SuperadminUsername string
+	SuperadminEmail    string
+	SuperadminPassword string
+
 	// External APIs
 	OpenWeatherAPIKey  string
 	OpenWeatherBaseURL string
@@ -52,6 +57,9 @@ func Load() (*Config, error) {
 		DBPassword:              getEnv("DB_PASS", "postgres"),
 		DBSSLMode:               getEnv("DB_SSLMODE", "disable"),
 		JWTSecret:               getEnv("JWT_SECRET", "floodroute-change-me-in-production-256bit"),
+		SuperadminUsername:      getEnv("SUPERADMIN_USERNAME", "superadmin"),
+		SuperadminEmail:         getEnv("SUPERADMIN_EMAIL", "superadmin@floodroute.local"),
+		SuperadminPassword:      getEnv("SUPERADMIN_PASSWORD", "superadmin123"),
 		OpenWeatherAPIKey:       getEnv("OPENWEATHER_API_KEY", ""),
 		OpenWeatherBaseURL:      getEnv("OPENWEATHER_BASE_URL", "https://api.openweathermap.org/data/2.5"),
 		ORSAPIKey:               getEnv("ORS_API_KEY", ""),

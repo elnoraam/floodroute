@@ -17,8 +17,8 @@ func NewUserRepository(db *sqlx.DB) *UserRepository { return &UserRepository{db:
 
 func (r *UserRepository) Create(ctx context.Context, u *model.User) error {
 	const q = `
-		INSERT INTO users (username, email, password_hash, display_name, role)
-		VALUES (:username, :email, :password_hash, :display_name, :role)
+		INSERT INTO users (username, email, password_hash, display_name, role, is_active)
+		VALUES (:username, :email, :password_hash, :display_name, :role, :is_active)
 		RETURNING id, created_at, updated_at`
 	rows, err := r.db.NamedQueryContext(ctx, q, u)
 	if err != nil {
@@ -31,6 +31,15 @@ func (r *UserRepository) Create(ctx context.Context, u *model.User) error {
 	return nil
 }
 
+func (r *UserRepository) FindByID(ctx context.Context, id int64) (*model.User, error) {
+	var u model.User
+	err := r.db.GetContext(ctx, &u, `SELECT * FROM users WHERE id=$1`, id)
+	if err != nil {
+		return nil, err
+	}
+	return &u, nil
+}
+
 func (r *UserRepository) FindByUsername(ctx context.Context, username string) (*model.User, error) {
 	var u model.User
 	err := r.db.GetContext(ctx, &u, `SELECT * FROM users WHERE username=$1 AND is_active=true`, username)
@@ -40,9 +49,69 @@ func (r *UserRepository) FindByUsername(ctx context.Context, username string) (*
 	return &u, nil
 }
 
+func (r *UserRepository) FindByUsernameAnyStatus(ctx context.Context, username string) (*model.User, error) {
+	var u model.User
+	err := r.db.GetContext(ctx, &u, `SELECT * FROM users WHERE username=$1`, username)
+	if err != nil {
+		return nil, err
+	}
+	return &u, nil
+}
+
 func (r *UserRepository) FindByEmail(ctx context.Context, email string) (*model.User, error) {
 	var u model.User
 	err := r.db.GetContext(ctx, &u, `SELECT * FROM users WHERE email=$1 AND is_active=true`, email)
+	if err != nil {
+		return nil, err
+	}
+	return &u, nil
+}
+
+func (r *UserRepository) FindByEmailAnyStatus(ctx context.Context, email string) (*model.User, error) {
+	var u model.User
+	err := r.db.GetContext(ctx, &u, `SELECT * FROM users WHERE email=$1`, email)
+	if err != nil {
+		return nil, err
+	}
+	return &u, nil
+}
+
+func (r *UserRepository) FindPending(ctx context.Context) ([]model.User, error) {
+	var list []model.User
+	err := r.db.SelectContext(ctx, &list, `
+		SELECT id, username, email, password_hash, display_name, role, is_active, created_at, updated_at
+		FROM users
+		WHERE is_active=false
+		ORDER BY created_at ASC`)
+	return list, err
+}
+
+func (r *UserRepository) Approve(ctx context.Context, id int64, role model.Role) (*model.User, error) {
+	var u model.User
+	err := r.db.GetContext(ctx, &u, `
+		UPDATE users
+		SET role=$2, is_active=true, updated_at=NOW()
+		WHERE id=$1
+		RETURNING id, username, email, password_hash, display_name, role, is_active, created_at, updated_at`, id, role)
+	if err != nil {
+		return nil, err
+	}
+	return &u, nil
+}
+
+func (r *UserRepository) ExistsActiveRole(ctx context.Context, role model.Role) (bool, error) {
+	var exists bool
+	err := r.db.GetContext(ctx, &exists, `SELECT EXISTS(SELECT 1 FROM users WHERE role=$1 AND is_active=true)`, role)
+	return exists, err
+}
+
+func (r *UserRepository) ActivateByUsername(ctx context.Context, username string, role model.Role) (*model.User, error) {
+	var u model.User
+	err := r.db.GetContext(ctx, &u, `
+		UPDATE users
+		SET role=$2, is_active=true, updated_at=NOW()
+		WHERE username=$1
+		RETURNING id, username, email, password_hash, display_name, role, is_active, created_at, updated_at`, username, role)
 	if err != nil {
 		return nil, err
 	}

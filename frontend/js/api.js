@@ -34,10 +34,16 @@ const API = (() => {
       return data;
     },
 
-    async register(username, email, password) {
-      const data = await request('POST', '/api/auth/register', { username, email, password });
-      API.setToken(data.token);
-      return data;
+    async register(username, email, password, role = 'CONSUMER') {
+      return request('POST', '/api/auth/register', { username, email, password, role });
+    },
+
+    async getPendingUsers() {
+      return request('GET', '/api/admin/users/pending');
+    },
+
+    async approveUser(id, role) {
+      return request('PATCH', `/api/admin/users/${id}/approve`, { role });
     },
 
     // ─── Routes ───────────────────────────────────────────────────────────

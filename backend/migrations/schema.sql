@@ -9,14 +9,32 @@ CREATE TABLE IF NOT EXISTS users (
     email           VARCHAR(128) UNIQUE NOT NULL,
     password_hash   TEXT NOT NULL,
     display_name    VARCHAR(128),
-    role            VARCHAR(32) NOT NULL DEFAULT 'USER',
-    is_active       BOOLEAN NOT NULL DEFAULT TRUE,
+    role            VARCHAR(32) NOT NULL DEFAULT 'CONSUMER' CHECK (role IN ('SUPERADMIN','PRODUCER','CONSUMER')),
+    is_active       BOOLEAN NOT NULL DEFAULT FALSE,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+ALTER TABLE users ALTER COLUMN role SET DEFAULT 'CONSUMER';
+ALTER TABLE users ALTER COLUMN is_active SET DEFAULT FALSE;
+UPDATE users SET role='SUPERADMIN' WHERE role='ADMIN';
+UPDATE users SET role='CONSUMER' WHERE role='USER';
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'users_role_check'
+    ) THEN
+        ALTER TABLE users
+            ADD CONSTRAINT users_role_check
+            CHECK (role IN ('SUPERADMIN','PRODUCER','CONSUMER'));
+    END IF;
+END $$;
+
 CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_users_username ON users(username);
+CREATE INDEX IF NOT EXISTS idx_users_pending ON users(is_active, created_at);
 
 -- ============================================================
 -- INCIDENTS (community reports)

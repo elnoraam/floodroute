@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"encoding/json"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -37,11 +38,33 @@ func Authenticate(jwtSecret string) func(http.Handler) http.Handler {
 func RequireAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if ClaimsFromCtx(r) == nil {
-			http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
+			writeJSONError(w, http.StatusUnauthorized, "unauthorized")
 			return
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+// RequireRole blocks the request unless the authenticated user has one of the roles.
+func RequireRole(roles ...string) func(http.Handler) http.Handler {
+	allowed := make(map[string]struct{}, len(roles))
+	for _, role := range roles {
+		allowed[strings.ToUpper(strings.TrimSpace(role))] = struct{}{}
+	}
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			claims := ClaimsFromCtx(r)
+			if claims == nil {
+				writeJSONError(w, http.StatusUnauthorized, "unauthorized")
+				return
+			}
+			if _, ok := allowed[strings.ToUpper(strings.TrimSpace(claims.Role))]; !ok {
+				writeJSONError(w, http.StatusForbidden, "forbidden")
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
 }
 
 // ClaimsFromCtx extracts JWT claims from context (may be nil for unauthenticated requests).
@@ -72,11 +95,17 @@ func Recoverer(next http.Handler) http.Handler {
 		defer func() {
 			if err := recover(); err != nil {
 				slog.Error("panic recovered", "err", err)
-				http.Error(w, `{"error":"internal server error"}`, http.StatusInternalServerError)
+				writeJSONError(w, http.StatusInternalServerError, "internal server error")
 			}
 		}()
 		next.ServeHTTP(w, r)
 	})
+}
+
+func writeJSONError(w http.ResponseWriter, status int, message string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(map[string]string{"message": message})
 }
 
 type responseWriter struct {

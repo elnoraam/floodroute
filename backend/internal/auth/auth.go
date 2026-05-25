@@ -49,9 +49,13 @@ func GenerateSecret(size int) (string, error) {
 // NormalizeRole canonicalizes role values used by the application.
 func NormalizeRole(role string) string {
 	switch strings.ToUpper(strings.TrimSpace(role)) {
-	case "ADMIN":
-		return "ADMIN"
+	case "SUPERADMIN", "ADMIN":
+		return "SUPERADMIN"
+	case "PRODUCER":
+		return "PRODUCER"
+	case "CONSUMER", "USER":
+		return "CONSUMER"
 	default:
-		return "USER"
+		return "CONSUMER"
 	}
 }

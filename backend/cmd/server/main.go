@@ -41,6 +41,10 @@ func main() {
 	}
 
 	svc := service.New(cfg, db)
+	if err := svc.EnsureSuperadmin(context.Background()); err != nil {
+		slog.Error("ensure superadmin", "err", err)
+		os.Exit(1)
+	}
 	router := handler.NewRouter(svc, cfg.JWTSecret)
 	sched := scheduler.New(svc)
 	if err := sched.Start(); err != nil {

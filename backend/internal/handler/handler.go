@@ -44,12 +44,26 @@ func NewRouter(svc *service.Service, jwtSecret string) http.Handler {
 	r.Route("/api", func(r chi.Router) {
 		r.Post("/auth/register", h.register)
 		r.Post("/auth/login", h.login)
-		r.Get("/flood-zones", h.listFloodZones)
-		r.Get("/weather", h.listWeather)
-		r.Get("/incidents", h.listIncidents)
-		r.Post("/routes", h.calculateRoutes)
-		r.Post("/incidents", h.createIncident)
-		r.Post("/incidents/{id}/upvote", h.upvoteIncident)
+
+		r.Group(func(r chi.Router) {
+			r.Use(middleware.RequireAuth)
+			r.Get("/flood-zones", h.listFloodZones)
+			r.Get("/weather", h.listWeather)
+			r.Get("/incidents", h.listIncidents)
+			r.Post("/routes", h.calculateRoutes)
+			r.Post("/incidents/{id}/upvote", h.upvoteIncident)
+
+			r.Group(func(r chi.Router) {
+				r.Use(middleware.RequireRole(string(model.RoleProducer), string(model.RoleSuperadmin)))
+				r.Post("/incidents", h.createIncident)
+			})
+
+			r.Group(func(r chi.Router) {
+				r.Use(middleware.RequireRole(string(model.RoleSuperadmin)))
+				r.Get("/admin/users/pending", h.listPendingUsers)
+				r.Patch("/admin/users/{id}/approve", h.approveUser)
+			})
+		})
 	})
 
 	return r
@@ -65,6 +79,7 @@ func (h *Handler) register(w http.ResponseWriter, r *http.Request) {
 		Email       string  `json:"email"`
 		Password    string  `json:"password"`
 		DisplayName *string `json:"displayName"`
+		Role        string  `json:"role"`
 	}
 	if err := decodeJSON(r, &req); err != nil {
 		writeError(w, http.StatusBadRequest, err)
@@ -75,6 +90,7 @@ func (h *Handler) register(w http.ResponseWriter, r *http.Request) {
 		Email:       req.Email,
 		Password:    req.Password,
 		DisplayName: req.DisplayName,
+		Role:        model.Role(req.Role),
 	})
 	if err != nil {
 		writeServiceError(w, err)
@@ -223,6 +239,36 @@ func (h *Handler) upvoteIncident(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]int{"upvotes": count})
+}
+
+func (h *Handler) listPendingUsers(w http.ResponseWriter, r *http.Request) {
+	users, err := h.svc.ListPendingUsers(r.Context())
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, users)
+}
+
+func (h *Handler) approveUser(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil || id <= 0 {
+		writeError(w, http.StatusBadRequest, errors.New("invalid user id"))
+		return
+	}
+	var req struct {
+		Role string `json:"role"`
+	}
+	if err := decodeJSON(r, &req); err != nil {
+		writeError(w, http.StatusBadRequest, err)
+		return
+	}
+	user, err := h.svc.ApproveUser(r.Context(), id, model.Role(req.Role))
+	if err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, user)
 }
 
 func decodeJSON(r *http.Request, target any) error {
