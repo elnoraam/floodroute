@@ -1,0 +1,30 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      SERVER_PORT: 8080
+      DB_HOST: host.docker.internal
+      DB_PORT: 5432
+      DB_NAME: floodroute
+      DB_USER: postgres
+      DB_PASS: postgres
+      DB_SSLMODE: disable
+      JWT_SECRET: replace_with_strong_secret
+      SUPERADMIN_USERNAME: superadmin
+      SUPERADMIN_EMAIL: superadmin@floodroute.local
+      SUPERADMIN_PASSWORD: superadmin123
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    expose:
+      - "8080"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    depends_on:
+      - backend
+    ports:
+      - "8088:80"
