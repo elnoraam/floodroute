@@ -101,123 +101,123 @@ const API = (() => {
 })();
 
 // Demo/offline fallback data
-const DEMO_DATA = {
-  floodZones: {
-    type: "FeatureCollection",
-    features: [
-      {
-        type: "Feature",
-        geometry: {
-          type: "Polygon",
-          coordinates: [[[107.605, -6.925],[107.615, -6.925],[107.615, -6.935],[107.605, -6.935],[107.605, -6.925]]]
-        },
-        properties: { id: 1, name: "Cikapundung Riverside", riskLevel: 4, source: "HISTORICAL", rainfallMm: 80 }
-      },
-      {
-        type: "Feature",
-        geometry: {
-          type: "Polygon",
-          coordinates: [[[107.655, -6.905],[107.665, -6.905],[107.665, -6.915],[107.655, -6.915],[107.655, -6.905]]]
-        },
-        properties: { id: 2, name: "Antapani Low Zone", riskLevel: 3, source: "HISTORICAL", rainfallMm: 55 }
-      },
-      {
-        type: "Feature",
-        geometry: {
-          type: "Polygon",
-          coordinates: [[[107.700, -6.940],[107.720, -6.940],[107.720, -6.955],[107.700, -6.955],[107.700, -6.940]]]
-        },
-        properties: { id: 3, name: "Gedebage Industrial Area", riskLevel: 3, source: "HISTORICAL", rainfallMm: 60 }
-      }
-    ]
-  },
+// const DEMO_DATA = {
+//   floodZones: {
+//     type: "FeatureCollection",
+//     features: [
+//       {
+//         type: "Feature",
+//         geometry: {
+//           type: "Polygon",
+//           coordinates: [[[107.605, -6.925],[107.615, -6.925],[107.615, -6.935],[107.605, -6.935],[107.605, -6.925]]]
+//         },
+//         properties: { id: 1, name: "Cikapundung Riverside", riskLevel: 4, source: "HISTORICAL", rainfallMm: 80 }
+//       },
+//       {
+//         type: "Feature",
+//         geometry: {
+//           type: "Polygon",
+//           coordinates: [[[107.655, -6.905],[107.665, -6.905],[107.665, -6.915],[107.655, -6.915],[107.655, -6.905]]]
+//         },
+//         properties: { id: 2, name: "Antapani Low Zone", riskLevel: 3, source: "HISTORICAL", rainfallMm: 55 }
+//       },
+//       {
+//         type: "Feature",
+//         geometry: {
+//           type: "Polygon",
+//           coordinates: [[[107.700, -6.940],[107.720, -6.940],[107.720, -6.955],[107.700, -6.955],[107.700, -6.940]]]
+//         },
+//         properties: { id: 3, name: "Gedebage Industrial Area", riskLevel: 3, source: "HISTORICAL", rainfallMm: 60 }
+//       }
+//     ]
+//   },
 
-  incidents: {
-    type: "FeatureCollection",
-    features: [
-      {
-        type: "Feature",
-        geometry: { type: "Point", coordinates: [107.6097, -6.9291] },
-        properties: { id: 1, type: "FLOOD", severity: 4, title: "Banjir Cikapundung", description: "Jalan terendam setinggi 40cm", upvotes: 12, isVerified: true, reportedAt: new Date(Date.now() - 1800000).toISOString() }
-      },
-      {
-        type: "Feature",
-        geometry: { type: "Point", coordinates: [107.6483, -6.9132] },
-        properties: { id: 2, type: "CONGESTION", severity: 3, title: "Macet Jl. Soekarno-Hatta", description: "Antrean panjang akibat genangan air", upvotes: 8, isVerified: false, reportedAt: new Date(Date.now() - 3600000).toISOString() }
-      },
-      {
-        type: "Feature",
-        geometry: { type: "Point", coordinates: [107.6322, -6.9205] },
-        properties: { id: 3, type: "ROAD_CLOSURE", severity: 5, title: "Jalan Ditutup", description: "Jalan Laswi ditutup akibat longsor kecil", upvotes: 21, isVerified: true, reportedAt: new Date(Date.now() - 900000).toISOString() }
-      },
-      {
-        type: "Feature",
-        geometry: { type: "Point", coordinates: [107.6712, -6.9388] },
-        properties: { id: 4, type: "FALLEN_TREE", severity: 2, title: "Pohon Tumbang", description: "Pohon menutupi sebagian jalur", upvotes: 3, isVerified: false, reportedAt: new Date(Date.now() - 7200000).toISOString() }
-      }
-    ]
-  },
+//   incidents: {
+//     type: "FeatureCollection",
+//     features: [
+//       {
+//         type: "Feature",
+//         geometry: { type: "Point", coordinates: [107.6097, -6.9291] },
+//         properties: { id: 1, type: "FLOOD", severity: 4, title: "Banjir Cikapundung", description: "Jalan terendam setinggi 40cm", upvotes: 12, isVerified: true, reportedAt: new Date(Date.now() - 1800000).toISOString() }
+//       },
+//       {
+//         type: "Feature",
+//         geometry: { type: "Point", coordinates: [107.6483, -6.9132] },
+//         properties: { id: 2, type: "CONGESTION", severity: 3, title: "Macet Jl. Soekarno-Hatta", description: "Antrean panjang akibat genangan air", upvotes: 8, isVerified: false, reportedAt: new Date(Date.now() - 3600000).toISOString() }
+//       },
+//       {
+//         type: "Feature",
+//         geometry: { type: "Point", coordinates: [107.6322, -6.9205] },
+//         properties: { id: 3, type: "ROAD_CLOSURE", severity: 5, title: "Jalan Ditutup", description: "Jalan Laswi ditutup akibat longsor kecil", upvotes: 21, isVerified: true, reportedAt: new Date(Date.now() - 900000).toISOString() }
+//       },
+//       {
+//         type: "Feature",
+//         geometry: { type: "Point", coordinates: [107.6712, -6.9388] },
+//         properties: { id: 4, type: "FALLEN_TREE", severity: 2, title: "Pohon Tumbang", description: "Pohon menutupi sebagian jalur", upvotes: 3, isVerified: false, reportedAt: new Date(Date.now() - 7200000).toISOString() }
+//       }
+//     ]
+//   },
 
-  weather: [
-    { source: "OPENWEATHER", temperature: 23.5, humidity: 82, rainfall1h: 3.2, conditionText: "moderate rain", fetchedAt: new Date().toISOString() }
-  ],
+//   weather: [
+//     { source: "OPENWEATHER", temperature: 23.5, humidity: 82, rainfall1h: 3.2, conditionText: "moderate rain", fetchedAt: new Date().toISOString() }
+//   ],
 
-  generateMockRoutes(oLat, oLon, dLat, dLon) {
-    const midLat = (oLat + dLat) / 2;
-    const midLon = (oLon + dLon) / 2;
-    const dist = Math.sqrt(Math.pow(dLat - oLat, 2) + Math.pow(dLon - oLon, 2)) * 111320;
+//   generateMockRoutes(oLat, oLon, dLat, dLon) {
+//     const midLat = (oLat + dLat) / 2;
+//     const midLon = (oLon + dLon) / 2;
+//     const dist = Math.sqrt(Math.pow(dLat - oLat, 2) + Math.pow(dLon - oLon, 2)) * 111320;
 
-    return {
-      recommended: {
-        id: 1, isRecommended: true,
-        safetyScore: 0.82, congestionProb: 0.15, hazardCount: 1,
-        distanceM: dist * 1.05, durationS: dist * 1.05 / 10,
-        etaMinutes: dist * 1.05 / 600,
-        geometry: {
-          type: "LineString",
-          coordinates: [
-            [oLon, oLat], [midLon - 0.003, midLat + 0.002],
-            [midLon, midLat], [dLon, dLat]
-          ]
-        },
-        hazards: [{ type: "CONGESTION", severity: 2, lat: midLat, lon: midLon, description: "Slight congestion" }]
-      },
-      alternatives: [
-        {
-          id: 2, isRecommended: false,
-          safetyScore: 0.55, congestionProb: 0.35, hazardCount: 3,
-          distanceM: dist * 0.95, durationS: dist * 0.95 / 8,
-          etaMinutes: dist * 0.95 / 480,
-          geometry: {
-            type: "LineString",
-            coordinates: [
-              [oLon, oLat], [midLon + 0.004, midLat - 0.003],
-              [midLon + 0.002, midLat + 0.001], [dLon, dLat]
-            ]
-          },
-          hazards: [
-            { type: "FLOOD_ZONE", severity: 3, lat: midLat - 0.002, lon: midLon + 0.003, description: "Flood-prone area" },
-            { type: "CONGESTION", severity: 3, lat: midLat, lon: midLon + 0.002, description: "Heavy traffic" }
-          ]
-        },
-        {
-          id: 3, isRecommended: false,
-          safetyScore: 0.38, congestionProb: 0.60, hazardCount: 4,
-          distanceM: dist * 1.15, durationS: dist * 1.15 / 6,
-          etaMinutes: dist * 1.15 / 360,
-          geometry: {
-            type: "LineString",
-            coordinates: [
-              [oLon, oLat], [midLon - 0.006, midLat - 0.004],
-              [midLon - 0.002, midLat - 0.002], [dLon, dLat]
-            ]
-          },
-          hazards: [
-            { type: "FLOOD", severity: 4, lat: midLat - 0.003, lon: midLon - 0.004, description: "Active flooding" },
-            { type: "ROAD_CLOSURE", severity: 5, lat: midLat - 0.001, lon: midLon - 0.002, description: "Road closed" }
-          ]
-        }
-      ]
-    };
-  }
-};
+//     return {
+//       recommended: {
+//         id: 1, isRecommended: true,
+//         safetyScore: 0.82, congestionProb: 0.15, hazardCount: 1,
+//         distanceM: dist * 1.05, durationS: dist * 1.05 / 10,
+//         etaMinutes: dist * 1.05 / 600,
+//         geometry: {
+//           type: "LineString",
+//           coordinates: [
+//             [oLon, oLat], [midLon - 0.003, midLat + 0.002],
+//             [midLon, midLat], [dLon, dLat]
+//           ]
+//         },
+//         hazards: [{ type: "CONGESTION", severity: 2, lat: midLat, lon: midLon, description: "Slight congestion" }]
+//       },
+//       alternatives: [
+//         {
+//           id: 2, isRecommended: false,
+//           safetyScore: 0.55, congestionProb: 0.35, hazardCount: 3,
+//           distanceM: dist * 0.95, durationS: dist * 0.95 / 8,
+//           etaMinutes: dist * 0.95 / 480,
+//           geometry: {
+//             type: "LineString",
+//             coordinates: [
+//               [oLon, oLat], [midLon + 0.004, midLat - 0.003],
+//               [midLon + 0.002, midLat + 0.001], [dLon, dLat]
+//             ]
+//           },
+//           hazards: [
+//             { type: "FLOOD_ZONE", severity: 3, lat: midLat - 0.002, lon: midLon + 0.003, description: "Flood-prone area" },
+//             { type: "CONGESTION", severity: 3, lat: midLat, lon: midLon + 0.002, description: "Heavy traffic" }
+//           ]
+//         },
+//         {
+//           id: 3, isRecommended: false,
+//           safetyScore: 0.38, congestionProb: 0.60, hazardCount: 4,
+//           distanceM: dist * 1.15, durationS: dist * 1.15 / 6,
+//           etaMinutes: dist * 1.15 / 360,
+//           geometry: {
+//             type: "LineString",
+//             coordinates: [
+//               [oLon, oLat], [midLon - 0.006, midLat - 0.004],
+//               [midLon - 0.002, midLat - 0.002], [dLon, dLat]
+//             ]
+//           },
+//           hazards: [
+//             { type: "FLOOD", severity: 4, lat: midLat - 0.003, lon: midLon - 0.004, description: "Active flooding" },
+//             { type: "ROAD_CLOSURE", severity: 5, lat: midLat - 0.001, lon: midLon - 0.002, description: "Road closed" }
+//           ]
+//         }
+//       ]
+//     };
+//   }
+// };

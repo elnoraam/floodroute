@@ -15,7 +15,7 @@
     reportType: 'FLOOD',
     reportSeverity: 2,
     user: null,
-    useDemoData: false   // use the live backend by default
+    useDemoData: false   // retained for compatibility
   };
 
   // ─── DOM refs ─────────────────────────────────────────────────────────────
@@ -149,26 +149,19 @@
 
   async function loadFloodZones() {
     try {
-      let data;
-      if (state.useDemoData) {
-        data = DEMO_DATA.floodZones;
-      } else if (!API.getToken()) {
-        data = emptyFeatureCollection();
-      } else {
-        data = await API.getFloodZones();
-      }
+      const data = API.getToken()
+        ? await API.getFloodZones()
+        : emptyFeatureCollection();
       MapManager.renderFloodZones(data);
     } catch (e) {
-      MapManager.renderFloodZones(DEMO_DATA.floodZones);
+      MapManager.renderFloodZones(emptyFeatureCollection());
     }
   }
 
   async function loadIncidents() {
     try {
       let data;
-      if (state.useDemoData) {
-        data = DEMO_DATA.incidents;
-      } else if (!API.getToken()) {
+      if (!API.getToken()) {
         data = emptyFeatureCollection();
       } else {
         const center = MapManager.getMap().getCenter();
@@ -177,21 +170,15 @@
       MapManager.renderIncidents(data);
       renderIncidentSidebar(data.features || []);
     } catch (e) {
-      MapManager.renderIncidents(DEMO_DATA.incidents);
-      renderIncidentSidebar(DEMO_DATA.incidents.features);
+      const emptyData = emptyFeatureCollection();
+      MapManager.renderIncidents(emptyData);
+      renderIncidentSidebar(emptyData.features);
     }
   }
 
   async function loadWeather() {
     try {
-      let data;
-      if (state.useDemoData) {
-        data = DEMO_DATA.weather;
-      } else if (!API.getToken()) {
-        data = [];
-      } else {
-        data = await API.getWeather();
-      }
+      const data = API.getToken() ? await API.getWeather() : [];
       if (data && data.length > 0) {
         const w = data[0];
         $weatherTemp.textContent = w.temperature ? `${w.temperature.toFixed(1)}°C` : '--°C';
@@ -215,7 +202,7 @@
   // ─── Route Calculation ────────────────────────────────────────────────────
 
   async function calculateRoute() {
-    if (!state.useDemoData && !API.getToken()) {
+    if (!API.getToken()) {
       toast('Login is required to calculate routes', 'error');
       $('authModal').classList.remove('hidden');
       return;
@@ -227,20 +214,11 @@
     $btnRoute.disabled = true;
 
     try {
-      let data;
-      if (state.useDemoData) {
-        await sleep(800); // simulate network
-        data = DEMO_DATA.generateMockRoutes(
-          state.origin.lat, state.origin.lon,
-          state.dest.lat, state.dest.lon
-        );
-      } else {
-        data = await API.getRoutes(
-          state.origin.lat, state.origin.lon,
-          state.dest.lat, state.dest.lon,
-          state.profile
-        );
-      }
+      const data = await API.getRoutes(
+        state.origin.lat, state.origin.lon,
+        state.dest.lat, state.dest.lon,
+        state.profile
+      );
 
       state.routeData = data;
       state.selectedRouteIdx = 0;
@@ -421,7 +399,7 @@
   // ─── Report Submission ────────────────────────────────────────────────────
 
   async function submitReport() {
-    if (!state.useDemoData && !API.getToken()) {
+    if (!API.getToken()) {
       showReportFeedback('Login as a producer to submit reports', 'error');
       $('authModal').classList.remove('hidden');
       return;
@@ -436,29 +414,22 @@
     const mediaFile = $('reportMedia').files?.[0] || null;
 
     try {
-      if (state.useDemoData) {
-        await sleep(500);
-        showReportFeedback('✅ Report submitted successfully! Thank you.', 'success');
-        toast('Report submitted', 'success');
-        await loadIncidents();
-      } else {
-        let imageUrl = null;
-        if (mediaFile) {
-          const media = await API.uploadMedia(mediaFile);
-          imageUrl = media.url;
-        }
-        await API.submitIncident(
-          state.reportType,
-          state.reportSeverity,
-          state.reportCoords.lat,
-          state.reportCoords.lon,
-          desc,
-          imageUrl
-        );
-        showReportFeedback('✅ Report submitted successfully!', 'success');
-        toast('Report submitted', 'success');
-        await loadIncidents();
+      let imageUrl = null;
+      if (mediaFile) {
+        const media = await API.uploadMedia(mediaFile);
+        imageUrl = media.url;
       }
+      await API.submitIncident(
+        state.reportType,
+        state.reportSeverity,
+        state.reportCoords.lat,
+        state.reportCoords.lon,
+        desc,
+        imageUrl
+      );
+      showReportFeedback('✅ Report submitted successfully!', 'success');
+      toast('Report submitted', 'success');
+      await loadIncidents();
     } catch (e) {
       showReportFeedback('❌ ' + e.message, 'error');
     }
@@ -637,8 +608,6 @@
     if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
     return `${Math.floor(s / 86400)}d ago`;
   }
-
-  function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
   function emptyFeatureCollection() {
     return { type: 'FeatureCollection', features: [] };
