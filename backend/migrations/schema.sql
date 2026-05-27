@@ -195,26 +195,26 @@ $$;
 -- ============================================================
 -- SEED DATA (sample flood zones for Bandung area)
 -- ============================================================
-INSERT INTO flood_zones (name, source, risk_level, geom, rainfall_mm) VALUES
-(
-    'Cikapundung Riverside - High Risk',
-    'HISTORICAL',
-    4,
-    'POLYGON((107.605 -6.925, 107.615 -6.925, 107.615 -6.935, 107.605 -6.935, 107.605 -6.925))',
-    80.0
-),
-(
-    'Antapani Low Zone',
-    'HISTORICAL',
-    3,
-    'POLYGON((107.655 -6.905, 107.665 -6.905, 107.665 -6.915, 107.655 -6.915, 107.655 -6.905))',
-    55.0
-),
-(
-    'Gedebage Industrial Area',
-    'HISTORICAL',
-    3,
-    'POLYGON((107.700 -6.940, 107.720 -6.940, 107.720 -6.955, 107.700 -6.955, 107.700 -6.940))',
-    60.0
-)
-ON CONFLICT DO NOTHING;
+-- INSERT INTO flood_zones (name, source, risk_level, geom, rainfall_mm) VALUES
+-- (
+--     'Cikapundung Riverside - High Risk',
+--     'HISTORICAL',
+--     4,
+--     'POLYGON((107.605 -6.925, 107.615 -6.925, 107.615 -6.935, 107.605 -6.935, 107.605 -6.925))',
+--     80.0
+-- ),
+-- (
+--     'Antapani Low Zone',
+--     'HISTORICAL',
+--     3,
+--     'POLYGON((107.655 -6.905, 107.665 -6.905, 107.665 -6.915, 107.655 -6.915, 107.655 -6.905))',
+--     55.0
+-- ),
+-- (
+--     'Gedebage Industrial Area',
+--     'HISTORICAL',
+--     3,
+--     'POLYGON((107.700 -6.940, 107.720 -6.940, 107.720 -6.955, 107.700 -6.955, 107.700 -6.940))',
+--     60.0
+-- )
+-- ON CONFLICT DO NOTHING;
