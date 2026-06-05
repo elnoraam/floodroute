@@ -2,7 +2,7 @@
 
 const MapManager = (() => {
   let map, routeLayerGroup, floodLayerGroup, incidentLayerGroup;
-  let originMarker = null, destMarker = null;
+  let originMarker = null, destMarker = null, reportMarker = null;
 
   // Custom icon factory
   function makeIcon(emoji, color = '#06b6d4', size = 32) {
@@ -212,6 +212,16 @@ const MapManager = (() => {
     destMarker.bindPopup('<div class="popup-title">🏁 Destination</div>');
   }
 
+  function setReportPin(lat, lon) {
+    if (reportMarker) map.removeLayer(reportMarker);
+    reportMarker = L.marker([lat, lon], { icon: makeIcon('📌', '#f59e0b', 32), zIndexOffset: 1000 }).addTo(map);
+    reportMarker.bindPopup('<div class="popup-title">📌 Incident location</div>');
+  }
+
+  function clearReportPin() {
+    if (reportMarker) { map.removeLayer(reportMarker); reportMarker = null; }
+  }
+
   function clearMarkers() {
     if (originMarker) { map.removeLayer(originMarker); originMarker = null; }
     if (destMarker) { map.removeLayer(destMarker); destMarker = null; }
@@ -269,6 +279,8 @@ const MapManager = (() => {
     renderRoutes,
     setOrigin,
     setDest,
+    setReportPin,
+    clearReportPin,
     clearMarkers,
     fitToRoutes,
     fitToAll,

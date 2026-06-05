@@ -204,10 +204,14 @@
 
       <div class="input-group">
         <label class="input-label">Location</label>
-        <p class="hint-text">Click on the map to set location, or use current position.</p>
-        <button class="btn-secondary" id="btnReportLocate">
-          📍 Use My Location
-        </button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn-secondary" id="btnReportPickMap">
+            🗺️ Pick on Map
+          </button>
+          <button class="btn-secondary" id="btnReportLocate">
+            📍 Use My Location
+          </button>
+        </div>
         <div class="coord-badge" id="reportCoords">Not set</div>
       </div>
 

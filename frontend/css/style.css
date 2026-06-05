@@ -841,6 +841,9 @@ html, body {
 }
 
 /* Click Mode */
+body.picking,
+body.picking * { cursor: crosshair !important; }
+
 .click-mode {
   position: absolute;
   bottom: 20px;

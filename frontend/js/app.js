@@ -93,10 +93,13 @@
       $severityDisplay.textContent = `${state.reportSeverity} – ${labels[state.reportSeverity]}`;
     });
 
+    $('btnReportPickMap').addEventListener('click', () => enterClickMode('report'));
+
     $('btnReportLocate').addEventListener('click', () => {
       navigator.geolocation?.getCurrentPosition(pos => {
         state.reportCoords = { lat: pos.coords.latitude, lon: pos.coords.longitude };
         $reportCoords.textContent = `${state.reportCoords.lat.toFixed(5)}, ${state.reportCoords.lon.toFixed(5)}`;
+        MapManager.setReportPin(state.reportCoords.lat, state.reportCoords.lon);
       }, () => toast('Could not get location', 'error'));
     });
 
@@ -338,13 +341,13 @@
       : mode === 'dest'
         ? 'Click map to set destination'
         : 'Click map to place incident';
-    MapManager.getMap().getContainer().style.cursor = 'crosshair';
+    document.body.classList.add('picking');
   }
 
   function cancelClickMode() {
     state.clickMode = null;
     $clickMode.style.display = 'none';
-    MapManager.getMap().getContainer().style.cursor = '';
+    document.body.classList.remove('picking');
   }
 
   function onMapClick(e) {
@@ -364,6 +367,7 @@
     } else if (state.clickMode === 'report') {
       state.reportCoords = { lat, lon };
       $reportCoords.textContent = `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
+      MapManager.setReportPin(lat, lon);
     }
 
     cancelClickMode();
@@ -405,8 +409,7 @@
       return;
     }
     if (!state.reportCoords) {
-      toast('Set a location for the report', 'error');
-      enterClickMode('report');
+      toast('Set a location first — use "Pick on Map" or "Use My Location"', 'error');
       return;
     }
 
@@ -429,6 +432,9 @@
       );
       showReportFeedback('✅ Report submitted successfully!', 'success');
       toast('Report submitted', 'success');
+      state.reportCoords = null;
+      $reportCoords.textContent = 'Not set';
+      MapManager.clearReportPin();
       await loadIncidents();
     } catch (e) {
       showReportFeedback('❌ ' + e.message, 'error');
