@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"time"
 
@@ -223,6 +224,31 @@ func (r *IncidentRepository) IncrementUpvotes(ctx context.Context, id int64) (in
 		`UPDATE incidents SET upvotes=upvotes+1 WHERE id=$1 RETURNING upvotes`, id,
 	).Scan(&upvotes)
 	return upvotes, err
+}
+
+func (r *IncidentRepository) FindByID(ctx context.Context, id int64) (*model.Incident, error) {
+	var inc model.Incident
+	err := r.db.GetContext(ctx, &inc, `
+		SELECT id, user_id, type, severity, title, description, image_url,
+		       latitude, longitude, upvotes, is_verified, is_active, expires_at,
+		       reported_at, updated_at
+		FROM incidents WHERE id=$1`, id)
+	if err != nil {
+		return nil, err
+	}
+	return &inc, nil
+}
+
+func (r *IncidentRepository) Delete(ctx context.Context, id int64) error {
+	res, err := r.db.ExecContext(ctx,
+		`UPDATE incidents SET is_active=false, updated_at=NOW() WHERE id=$1 AND is_active=true`, id)
+	if err != nil {
+		return err
+	}
+	if rows, _ := res.RowsAffected(); rows == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
 }
 
 func (r *IncidentRepository) ExpireOld(ctx context.Context) (int64, error) {

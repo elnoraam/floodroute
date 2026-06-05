@@ -573,6 +573,24 @@ html, body {
 
 .incident-item:last-child { border-bottom: none; }
 
+.btn-delete-incident {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  align-self: flex-start;
+  line-height: 1;
+  transition: color 0.15s, background 0.15s;
+}
+.btn-delete-incident:hover {
+  color: var(--accent-danger);
+  background: rgba(239,68,68,0.1);
+}
+
 .incident-type-icon {
   font-size: 18px;
   flex-shrink: 0;

@@ -315,6 +315,10 @@
       }).join('');
 
       const when = p.reportedAt ? timeAgo(new Date(p.reportedAt)) : '';
+      const canDelete = state.user && (
+        state.user.role === 'SUPERADMIN' ||
+        (state.user.role === 'PRODUCER' && p.userId === state.user.id)
+      );
 
       const el = document.createElement('div');
       el.className = 'incident-item';
@@ -326,7 +330,20 @@
           <div class="incident-meta">${when}</div>
           <div class="incident-severity">${sevDots}</div>
         </div>
+        ${canDelete ? `<button class="btn-delete-incident" data-id="${p.id}" title="Remove incident">✕</button>` : ''}
       `;
+      if (canDelete) {
+        el.querySelector('.btn-delete-incident').addEventListener('click', async (e) => {
+          e.stopPropagation();
+          try {
+            await API.deleteIncident(p.id);
+            toast('Incident removed', 'success');
+            await loadIncidents();
+          } catch (err) {
+            toast(err.message, 'error');
+          }
+        });
+      }
       $incidentList.appendChild(el);
     });
   }

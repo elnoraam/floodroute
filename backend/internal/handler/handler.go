@@ -58,6 +58,7 @@ func NewRouter(svc *service.Service, jwtSecret string) http.Handler {
 				r.Use(middleware.RequireRole(string(model.RoleProducer), string(model.RoleSuperadmin)))
 				r.Post("/incidents", h.createIncident)
 				r.Post("/media", h.uploadMedia)
+				r.Delete("/incidents/{id}", h.deleteIncident)
 			})
 
 			r.Group(func(r chi.Router) {
@@ -287,6 +288,24 @@ func (h *Handler) getMedia(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write(media.Data)
 }
 
+func (h *Handler) deleteIncident(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil || id <= 0 {
+		writeError(w, http.StatusBadRequest, errors.New("invalid incident id"))
+		return
+	}
+	claims := middleware.ClaimsFromCtx(r)
+	if claims == nil {
+		writeError(w, http.StatusUnauthorized, errors.New("unauthorized"))
+		return
+	}
+	if err := h.svc.DeleteIncident(r.Context(), id, claims.UserID, claims.Role); err != nil {
+		writeServiceError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (h *Handler) listPendingUsers(w http.ResponseWriter, r *http.Request) {
 	users, err := h.svc.ListPendingUsers(r.Context())
 	if err != nil {
@@ -334,6 +353,8 @@ func writeServiceError(w http.ResponseWriter, err error) {
 		writeError(w, http.StatusUnauthorized, err)
 	case errors.Is(err, service.ErrNotFound):
 		writeError(w, http.StatusNotFound, err)
+	case errors.Is(err, service.ErrForbidden):
+		writeError(w, http.StatusForbidden, err)
 	default:
 		writeError(w, http.StatusInternalServerError, err)
 	}

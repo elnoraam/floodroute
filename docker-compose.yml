@@ -15,6 +15,8 @@ services:
       SUPERADMIN_USERNAME: superadmin
       SUPERADMIN_EMAIL: superadmin@floodroute.local
       SUPERADMIN_PASSWORD: superadmin123
+    volumes:
+      - ./database:/app/database
     extra_hosts:
       - "host.docker.internal:host-gateway"
     expose:

@@ -79,6 +79,16 @@ const API = (() => {
       return request('POST', `/api/incidents/${id}/upvote`);
     },
 
+    async deleteIncident(id) {
+      const opts = { method: 'DELETE', headers: authHeaders() };
+      const res = await fetch(`${BASE}/api/incidents/${id}`, opts);
+      if (!res.ok) {
+        let msg = `HTTP ${res.status}`;
+        try { const e = await res.json(); msg = e.message || msg; } catch (_) {}
+        throw new Error(msg);
+      }
+    },
+
     // ─── Flood Zones ──────────────────────────────────────────────────────
     async getFloodZones() {
       return request('GET', '/api/flood-zones');

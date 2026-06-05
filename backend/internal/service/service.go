@@ -3,14 +3,17 @@ package service
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"math"
 	"net/http"
 	"net/url"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -34,6 +37,7 @@ var (
 	ErrValidation   = errors.New("validation error")
 	ErrUnauthorized = errors.New("unauthorized")
 	ErrNotFound     = errors.New("not found")
+	ErrForbidden    = errors.New("forbidden")
 )
 
 // Service holds the application use cases.
@@ -395,6 +399,24 @@ func (s *Service) ListIncidents(ctx context.Context, lat, lon, radius float64) (
 	return model.NewFeatureCollection(features), nil
 }
 
+// incidentTTL returns how long an incident should stay active based on type and severity.
+// Base TTLs reflect real-world clearance times; severity scales the duration by 0.7×–1.5×.
+func incidentTTL(typ model.IncidentType, severity int16) time.Duration {
+	base := map[model.IncidentType]time.Duration{
+		model.IncidentFlood:       48 * time.Hour,
+		model.IncidentRoadClosure: 24 * time.Hour,
+		model.IncidentFallenTree:  8 * time.Hour,
+		model.IncidentOther:       6 * time.Hour,
+		model.IncidentAccident:    3 * time.Hour,
+		model.IncidentCongestion:  90 * time.Minute,
+	}[typ]
+	if base == 0 {
+		base = 6 * time.Hour
+	}
+	factor := 0.5 + float64(severity)*0.2
+	return time.Duration(float64(base) * factor)
+}
+
 // CreateIncident persists a community report.
 func (s *Service) CreateIncident(ctx context.Context, input IncidentInput) (*model.Incident, error) {
 	if input.Type == "" {
@@ -407,7 +429,7 @@ func (s *Service) CreateIncident(ctx context.Context, input IncidentInput) (*mod
 		return nil, fmt.Errorf("%w: latitude and longitude are required", ErrValidation)
 	}
 
-	expiresAt := s.now().Add(6 * time.Hour)
+	expiresAt := s.now().Add(incidentTTL(input.Type, input.Severity))
 	if input.ExpiresAt != nil && !input.ExpiresAt.IsZero() {
 		expiresAt = *input.ExpiresAt
 	}
@@ -427,6 +449,7 @@ func (s *Service) CreateIncident(ctx context.Context, input IncidentInput) (*mod
 	if err := s.Incidents.Create(ctx, incident); err != nil {
 		return nil, err
 	}
+	s.snapshotIncidents(ctx)
 	return incident, nil
 }
 
@@ -436,6 +459,54 @@ func (s *Service) UpvoteIncident(ctx context.Context, id int64) (int, error) {
 		return 0, fmt.Errorf("%w: invalid incident id", ErrValidation)
 	}
 	return s.Incidents.IncrementUpvotes(ctx, id)
+}
+
+// DeleteIncident deactivates an incident. Only the reporter or a superadmin may delete.
+func (s *Service) DeleteIncident(ctx context.Context, id, callerUserID int64, callerRole string) error {
+	if id <= 0 {
+		return fmt.Errorf("%w: invalid incident id", ErrValidation)
+	}
+	inc, err := s.Incidents.FindByID(ctx, id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrNotFound
+		}
+		return err
+	}
+	isSuperadmin := strings.EqualFold(callerRole, string(model.RoleSuperadmin))
+	isOwner := inc.UserID != nil && *inc.UserID == callerUserID
+	if !isSuperadmin && !isOwner {
+		return ErrForbidden
+	}
+	if err := s.Incidents.Delete(ctx, id); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrNotFound
+		}
+		return err
+	}
+	s.snapshotIncidents(ctx)
+	return nil
+}
+
+// snapshotIncidents writes all active incidents to database/incidents.json.
+func (s *Service) snapshotIncidents(ctx context.Context) {
+	list, err := s.Incidents.FindAllActive(ctx)
+	if err != nil {
+		slog.Warn("snapshot incidents: query failed", "err", err)
+		return
+	}
+	if err := os.MkdirAll("database", 0o755); err != nil {
+		slog.Warn("snapshot incidents: mkdir failed", "err", err)
+		return
+	}
+	data, err := json.MarshalIndent(list, "", "  ")
+	if err != nil {
+		slog.Warn("snapshot incidents: marshal failed", "err", err)
+		return
+	}
+	if err := os.WriteFile("database/incidents.json", data, 0o644); err != nil {
+		slog.Warn("snapshot incidents: write failed", "err", err)
+	}
 }
 
 // ListFloodZones returns active flood zones as GeoJSON.
