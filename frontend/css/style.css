@@ -271,6 +271,63 @@ html, body {
   gap: 8px;
 }
 
+.autocomplete-dropdown {
+  display: none;
+  background: var(--bg-elevated);
+  border: 1px solid var(--bg-border);
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  max-height: 180px;
+  overflow-y: auto;
+  margin-top: -1px;
+}
+
+.autocomplete-dropdown.visible { display: block; }
+
+.autocomplete-item {
+  padding: 9px 12px;
+  font-size: 11px;
+  color: var(--text-primary);
+  cursor: pointer;
+  border-bottom: 1px solid var(--bg-border);
+  line-height: 1.4;
+}
+
+.autocomplete-item:last-child { border-bottom: none; }
+
+.autocomplete-item:hover {
+  background: var(--bg-panel);
+  color: var(--accent-cyan);
+}
+
+.autocomplete-loading {
+  padding: 10px 12px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.btn-pick-map {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--bg-border);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: border-color .15s, color .15s;
+}
+
+.btn-pick-map:hover {
+  border-color: var(--accent-cyan);
+  color: var(--accent-cyan);
+}
+
+.btn-pick-map svg { width: 16px; height: 16px; }
+
 .btn-locate {
   flex-shrink: 0;
   width: 38px; height: 38px;

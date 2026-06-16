@@ -90,13 +90,21 @@
 
       <div class="input-group">
         <label class="input-label">Origin</label>
-        <div class="input-with-btn">
-          <input type="text" id="inputOrigin" class="map-input" placeholder="Click on map or type address…" />
-          <button class="btn-locate" id="btnLocate" title="Use my location">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
-            </svg>
-          </button>
+        <div class="input-with-btn-wrap">
+          <div class="input-with-btn">
+            <input type="text" id="inputOrigin" class="map-input" placeholder="Type address or pick on map…" autocomplete="off" />
+            <button class="btn-locate" id="btnLocate" title="Use my location">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
+              </svg>
+            </button>
+            <button class="btn-pick-map" id="btnPickOrigin" title="Pick on map">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/>
+              </svg>
+            </button>
+          </div>
+          <div class="autocomplete-dropdown" id="autocompleteOrigin"></div>
         </div>
         <div class="coord-badge" id="coordOrigin"></div>
       </div>
@@ -109,8 +117,16 @@
 
       <div class="input-group">
         <label class="input-label">Destination</label>
-        <div class="input-with-btn">
-          <input type="text" id="inputDest" class="map-input" placeholder="Click on map or type address…" />
+        <div class="input-with-btn-wrap">
+          <div class="input-with-btn">
+            <input type="text" id="inputDest" class="map-input" placeholder="Type address or pick on map…" autocomplete="off" />
+            <button class="btn-pick-map" id="btnPickDest" title="Pick on map">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/>
+              </svg>
+            </button>
+          </div>
+          <div class="autocomplete-dropdown" id="autocompleteDest"></div>
         </div>
         <div class="coord-badge" id="coordDest"></div>
       </div>

@@ -62,9 +62,11 @@
     $btnSwap.addEventListener('click', swapOriginDest);
     $btnRoute.addEventListener('click', calculateRoute);
 
-    // Origin/dest inputs - click on map mode
-    $inputOrigin.addEventListener('click', () => enterClickMode('origin'));
-    $inputDest.addEventListener('click', () => enterClickMode('dest'));
+    // Origin/dest: address autocomplete + map pick buttons
+    $('btnPickOrigin').addEventListener('click', () => enterClickMode('origin'));
+    $('btnPickDest').addEventListener('click', () => enterClickMode('dest'));
+    setupAutocomplete($inputOrigin, $('autocompleteOrigin'), 'origin');
+    setupAutocomplete($inputDest, $('autocompleteDest'), 'dest');
 
     // Profile chips
     document.querySelectorAll('.chip[data-profile]').forEach(c => {
@@ -346,6 +348,78 @@
       }
       $incidentList.appendChild(el);
     });
+  }
+
+  // ─── Address Autocomplete ─────────────────────────────────────────────────
+
+  function setupAutocomplete(input, dropdown, field) {
+    let debounceTimer = null;
+
+    input.addEventListener('input', () => {
+      clearTimeout(debounceTimer);
+      const q = input.value.trim();
+      if (q.length < 3) { closeDropdown(dropdown); return; }
+      dropdown.innerHTML = '<div class="autocomplete-loading">Searching…</div>';
+      dropdown.classList.add('visible');
+      debounceTimer = setTimeout(() => geocodeAddress(q, dropdown, field), 400);
+    });
+
+    input.addEventListener('blur', () => {
+      setTimeout(() => closeDropdown(dropdown), 200);
+    });
+  }
+
+  function closeDropdown(dropdown) {
+    dropdown.classList.remove('visible');
+    dropdown.innerHTML = '';
+  }
+
+  async function geocodeAddress(query, dropdown, field) {
+    try {
+      const params = new URLSearchParams({
+        format: 'json', q: query, limit: 5,
+        countrycodes: 'id', addressdetails: 1
+      });
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?${params}`, {
+        headers: { 'Accept-Language': 'en' }
+      });
+      if (!res.ok) throw new Error('Search failed');
+      const results = await res.json();
+
+      if (!results.length) {
+        dropdown.innerHTML = '<div class="autocomplete-loading">No results found</div>';
+        return;
+      }
+
+      dropdown.innerHTML = '';
+      results.forEach(place => {
+        const item = document.createElement('div');
+        item.className = 'autocomplete-item';
+        item.textContent = place.display_name;
+        item.addEventListener('mousedown', () => {
+          selectPlace(field, parseFloat(place.lat), parseFloat(place.lon), place.display_name);
+          closeDropdown(dropdown);
+        });
+        dropdown.appendChild(item);
+      });
+    } catch (_) {
+      dropdown.innerHTML = '<div class="autocomplete-loading">Search failed — try picking on the map</div>';
+    }
+  }
+
+  function selectPlace(field, lat, lon, label) {
+    if (field === 'origin') {
+      state.origin = { lat, lon, label };
+      $inputOrigin.value = label;
+      $coordOrigin.textContent = `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
+      MapManager.setOrigin(lat, lon);
+      MapManager.getMap().setView([lat, lon], 14);
+    } else {
+      state.dest = { lat, lon, label };
+      $inputDest.value = label;
+      $coordDest.textContent = `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
+      MapManager.setDest(lat, lon);
+    }
   }
 
   // ─── Click Mode ───────────────────────────────────────────────────────────
