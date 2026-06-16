@@ -1,11 +1,29 @@
 services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: floodroute
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - floodroute-postgres:/var/lib/postgresql/data
+      - ./backend/migrations/schema.sql:/docker-entrypoint-initdb.d/001-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d floodroute"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
     environment:
       SERVER_PORT: 8080
-      DB_HOST: host.docker.internal
+      DB_HOST: db
       DB_PORT: 5432
       DB_NAME: floodroute
       DB_USER: postgres
@@ -17,8 +35,6 @@ services:
       SUPERADMIN_PASSWORD: superadmin123
     volumes:
       - ./database:/app/database
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     expose:
       - "8080"
 
@@ -30,3 +46,6 @@ services:
       - backend
     ports:
       - "8088:80"
+
+volumes:
+  floodroute-postgres:
