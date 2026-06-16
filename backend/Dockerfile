@@ -7,7 +7,7 @@ RUN apk add --no-cache ca-certificates
 COPY go.mod go.sum ./
 RUN go mod download
 
-RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/floodroute ./cmd/server
+RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/floodroute .
 
 FROM alpine:3.20
 
